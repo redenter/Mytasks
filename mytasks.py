@@ -21,24 +21,24 @@ class TaskManager:
         self.tasks = Tree(0)
 
 # create a tree obj based on the input prop and val and insert
-    def addTask(self, prop, val):
+    def addTask(self, prop):
         tasks = self.tasks
-        id_idx = None
-        p_idx = None
-        for idx, p in enumerate(prop):
-            if (p == 'id'):
-               id_idx = idx 
-            elif (p == 'parent'):
-               p_idx = idx 
+        newId = None
+        parentId = None
+        for key, val in prop.items():
+            if (key == 'id'):
+               newId = val 
+            elif (key == 'parent'):
+               parentId = val 
            
-        newId = self.createId()
-        if id_idx is not None:
-            newId = val[id_idx]
-            del prop[id_idx]
-            del val[id_idx]
+        if newId is None:
+            # create a new id for the task
+            newId = self.createId()
+        else:
+            # delete the key, value pair from the dictionary
+            del prop['id']
 
-        task = Tree(id=newId, prop=prop, val=val)
-        parentId = None if p_idx is None else val[p_idx]
+        task = Tree(id=newId, prop=prop)
         tasks.insert(task, parentId)
     
     def display(self):
@@ -48,8 +48,7 @@ class TaskManager:
         return random.randint(1, 20000) 
     
     def add(self):
-        prop = []
-        val = []
+        prop = {} 
 
         newVal = ''
         currProp = 'desc'
@@ -60,21 +59,19 @@ class TaskManager:
                 newVal = newVal + ' ' + elem
             else:
                 if newVal != '' :
-                    prop.append(currProp)
-                    val.append(newVal.strip())
+                    prop[currProp.strip()] = newVal.strip()
                 currProp = elem[:pos]
                 newVal = elem[pos+1:]
 
         if newVal != '' :
-            prop.append(currProp)
-            val.append(newVal.strip())
+            prop[currProp.strip()] = newVal.strip()
 
-        if prop == [] and val == []:
+        if prop == {}:
             raise Exception('improper arguments')
         
-        for p,v in zip(prop,val):
+        for p,v in prop.items():
             deb('add:: prop= '+p+' val= '+v)
-        self.addTask(prop, val)
+        self.addTask(prop)
 
     def createArgsObj(self):
         parser = argparse.ArgumentParser()
@@ -83,6 +80,9 @@ class TaskManager:
         add.add_argument('allPropVal', nargs='*')
         add.set_defaults(func=taskManager.add)
         return parser.parse_args()
+
+#    def writeToFile(self, fileName):
+
                 
 taskManager = TaskManager()
 

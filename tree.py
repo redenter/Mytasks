@@ -1,9 +1,8 @@
 class Tree:
 
-    def __init__(self, id, parent=None, prop=None, val=None):
+    def __init__(self, id, parent=None, prop=None):
         self.parent = parent
-        self.prop = prop if prop is not None else []
-        self.val = val if val is not None else []
+        self.prop = prop if prop is not None else {}
         self.id = id
         self.children = []
 
@@ -42,14 +41,13 @@ class Tree:
             t = tr
 
         print(t.id)
-        if t.prop is not None or t.prop != []:
-            for idx, p in enumerate(t.prop):
-                print(t.prop[idx] + ":" + str(t.val[idx]))
+        if t.prop is not None or t.prop != {}:
+            for key, value in t.prop.items():
+                print(str(key) + ":" + str(value))
 
         for ch in t.children:
             t.display(ch)
 
-        
 
     # deletes the entire subtree associated with the id.
     # use carefully
