@@ -1,20 +1,31 @@
+from __future__ import print_function
+import datetime
+
+def deb(stmt):
+    log = open('log.txt', 'a')
+    print(str(datetime.datetime.now()) + ':          ' + stmt, file = log)
+
+
 class Tree:
 
     def __init__(self, id, parent=None, prop=None):
-        self.parent = parent
+        self.parent = self if parent is None else parent
         self.prop = prop if prop is not None else {}
         self.id = id
         self.children = []
 
     def insert(self, child, parentId=None):
+        deb('tree.insert: count of children= ' + str(len(self.children)))
         parent = self.find(parentId) 
        # if parent is not None:
        #     print("insert: id"+str(id) +"parentId:" + str(parent.id))
-        child.parent = parent
 
-        if parent is None:
+        # could potentially refactor here. Parent can no longer be None
+        if parent is None or parent==self:
+            child.parent = self
             self.children.append(child)
         else:
+            child.parent = parent
             parent.children.append(child)
 
     # does a simple search as the insert does 
@@ -24,9 +35,13 @@ class Tree:
             return None
 
         t = self
+        deb('tree.find: searching :'+str(self.id))
+
         if t.id == id:
             return t
+
         if t.children is None or t.children==[]:
+            deb('tree.find: no children for :'+str(t.id))
             return None
 
         for ch in self.children:
@@ -54,7 +69,9 @@ class Tree:
     def delete(self, id):
         if self.id == id:
             return
+        deb('tree.delete: trying to find:'+str(id))
         t = self.find(id)
+        deb('tree.delete: t.id = '+str(t.id))
         parent = t.parent
         parent.children.remove(t)
 
