@@ -20,6 +20,7 @@ class TaskManager:
     def __init__(self, fileName=None):
         try:
             self.tasks = self.readFromFile(fileName)
+            self.fileName = fileName
         except:
             self.tasks = Tree(0)
 
@@ -31,9 +32,9 @@ class TaskManager:
         parentId = None
         for key, val in prop.items():
             if (key == 'id'):
-               newId = val 
+               newId = (val) 
             elif (key == 'parent'):
-               parentId = val 
+               parentId = int(val)
            
         if newId is None:
             # create a new id for the task
@@ -41,6 +42,9 @@ class TaskManager:
         else:
             # delete the key, value pair from the dictionary
             del prop['id']
+
+        if parentId is not None:
+            del prop['parent']
 
         task = Tree(id=newId, prop=prop)
         tasks.insert(task, parentId)
@@ -106,7 +110,6 @@ class TaskManager:
         return parser.parse_args()
 
     def createDict(self, obj):
-
         deb('createDict for obj id= ' + str(obj.id))
         if obj is None:
             return {}
@@ -124,27 +127,21 @@ class TaskManager:
                 resDict.update(cDict)
         return resDict
         
-    
 
     def writeToFile(self, fileName):
-        #with open(fileName, 'wb') as output:
-        #    pickle.dump(self.tasks, output, -1)
-
-        with open('newf.json','wb') as output:
+        with open(fileName,'wb') as output:
             json.dump(self.tasks, output, default=self.createDict)
 
     def str_hook(self, obj):
         if isinstance(obj, dict):
-            return {k.encode('utf-8') if isinstance(k,unicode) else k :
+            return {k.encode('utf-8') if isinstance(k, unicode) else k :
                     self.str_hook(v)
                     for k,v in obj.items()}
         else:
             return obj.encode('utf-8') if isinstance(obj, unicode) else obj
         
 
-    # have to figure out a way to link ids to parent objects.
-    # haven't done that for normal insertion (i.e parent id in args). Maybe 
-    # reuse commands
+    # read from json file.
     def readFromFile(self, filename):
         data = {}
         with open(filename, 'rb') as output:
@@ -184,8 +181,9 @@ class TaskManager:
         if parentId == -1:
             raise Exception('no top level task present in the json file')
 
+        deb('readFromFile: the final dict file is ' + str(self.createDict(resDict[parentId])))
         return resDict[parentId]
-        
+    
 
 taskManager = TaskManager('newf.json')
 args = taskManager.createArgsObj()
