@@ -1,5 +1,6 @@
-from tree import Tree;
+from tree import Tree; 
 from tree import deb
+from pprint import pprint
 import argparse;
 import random;
 import cPickle as pickle
@@ -18,9 +19,7 @@ class TaskManager:
 
     def __init__(self, fileName=None):
         try:
-            input = open(fileName, 'rb')
-            self.tasks = pickle.load(input)
-            self.fileName = fileName
+            self.tasks = self.readFromFile(fileName)
         except:
             self.tasks = Tree(0)
 
@@ -128,15 +127,67 @@ class TaskManager:
     
 
     def writeToFile(self, fileName):
-        with open(fileName, 'wb') as output:
-            pickle.dump(self.tasks, output, -1)
+        #with open(fileName, 'wb') as output:
+        #    pickle.dump(self.tasks, output, -1)
 
         with open('newf.json','wb') as output:
             json.dump(self.tasks, output, default=self.createDict)
 
-                
-taskManager = TaskManager('taskObj')
+    def str_hook(self, obj):
+        if isinstance(obj, dict):
+            return {k.encode('utf-8') if isinstance(k,unicode) else k :
+                    self.str_hook(v)
+                    for k,v in obj.items()}
+        else:
+            return obj.encode('utf-8') if isinstance(obj, unicode) else obj
+        
 
+    # have to figure out a way to link ids to parent objects.
+    # haven't done that for normal insertion (i.e parent id in args). Maybe 
+    # reuse commands
+    def readFromFile(self, filename):
+        data = {}
+        with open(filename, 'rb') as output:
+            data = json.loads(output.read(), object_hook=self.str_hook)
+
+        deb('readFromFile: keys are = ' + str(data.keys()))
+        if data == {}:
+            raise Exception('could not read Json file, or the file was empty!')
+
+
+        resDict = {}
+        parentId = -1
+        for key, value in data.items():
+            deb('readFromFile: key is = ' + key)
+            deb('readFromFile: value is = ' + str(value))
+            t = Tree(id=int(key))
+            # if resDict has the object already use that
+            if int(key) in resDict:
+                t = resDict[int(key)]
+
+            # set the other properties
+            t.prop = value['prop']
+            if int(value['parentId']) != int(key):
+                if int(value['parentId']) in resDict:
+                    parent = resDict[int(value['parentId'])]
+                    t.parent = parent
+                    parent.children.append(t)
+                else:
+                    resDict[int(value['parentId'])] = Tree(int(value['parentId']))
+                    resDict[int(value['parentId'])].children.append(t)
+            else:
+                t.parent = t
+                parentId = int(value['parentId'])
+
+            resDict[int(key)] = t
+
+        if parentId == -1:
+            raise Exception('no top level task present in the json file')
+
+        return resDict[parentId]
+        
+
+taskManager = TaskManager('newf.json')
 args = taskManager.createArgsObj()
 args.func()
 
