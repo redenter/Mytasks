@@ -27,6 +27,8 @@ class Tree:
         else:
             child.parent = parent
             parent.children.append(child)
+        deb('tree.insert:: parent is ' + parent.id + ':grandpa:' + parent.parent.id)
+        deb('tree.insert:: child is ' + child.id + ':parent:' + child.parent.id)
 
     # does a simple search as the insert does 
     # is a straightforward addition to the tree
@@ -38,6 +40,7 @@ class Tree:
         deb('tree.find: searching :'+str(self.id))
 
         if t.id == id:
+            deb('tree.find found id:' + str(id))
             return t
 
         if t.children is None or t.children==[]:
@@ -47,6 +50,7 @@ class Tree:
         for ch in self.children:
             t = ch.find(id)
             if t is not None:
+                deb('tree.find found id:' + str(t.id))
                 return t
 
     def display(self, tr=None):

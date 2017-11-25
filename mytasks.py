@@ -15,7 +15,8 @@ class TaskManager:
 # write the tasks to a file for persistence
 # read from the file: write every time there is
 #                     an update, but read only once
-#                     Initially, do a direct object dump
+# should display tasks
+# should be able to update tasks
 
     def __init__(self, fileName=None):
         try:
@@ -24,39 +25,10 @@ class TaskManager:
         except:
             self.tasks = Tree(0)
 
-
-# create a tree obj based on the input prop and val and insert
-    def addTask(self, prop):
-        tasks = self.tasks
-        newId = None
-        parentId = None
-        for key, val in prop.items():
-            if (key == 'id'):
-               newId = (val) 
-            elif (key == 'parent'):
-               parentId = int(val)
-           
-        if newId is None:
-            # create a new id for the task
-            newId = self.createId()
-        else:
-            # delete the key, value pair from the dictionary
-            del prop['id']
-
-        if parentId is not None:
-            del prop['parent']
-
-        task = Tree(id=newId, prop=prop)
-        tasks.insert(task, parentId)
-        self.writeToFile(self.fileName)
-    
-    def display(self):
-        self.tasks.display()
-
     def createId(self):
-        return random.randint(1, 20000) 
+        return str(random.randint(1, 20000))
     
-    def add(self):
+    def getPropDictFromCL(self):
         prop = {} 
 
         newVal = ''
@@ -79,13 +51,91 @@ class TaskManager:
             raise Exception('improper arguments')
         
         for p,v in prop.items():
-            deb('add:: prop= '+p+' val= '+v)
+            deb('getPropDictFromCL:: prop= '+p+' val= '+v)
+        return prop
+
+    def add(self):
+        prop = self.getPropDictFromCL()
         self.addTask(prop)
 
+    # right now update appends prop dicts, replacing the old ones with the new values wherever there
+    # is a clash. 
+    # TODO: add optional parameters to completely replace the existing parameters
+    def updateTask(self):
+        prop = self.getPropDictFromCL()
+        deb('updateTask: got::'+str(prop))
+        if 'id' not in prop:
+            raise Exception('no task id provided for update. Try add or provide the task id')
+
+        currTask = self.tasks.find(prop['id']) 
+        del prop['id']
+
+        # need to change links if parent also needs to be updated
+        if 'parent' in prop:
+            deb('updateTask: parent in input prop. New parent id is::'+ prop['parent'])
+            currParent = currTask.parent
+            deb('updateTask: current parent is:'+currParent.id)
+            newParentId = prop['parent']
+            
+            if newParentId != currParent.id:
+                if newParentId == currTask.id:
+                    newParentId = 0
+                
+                newParent = self.tasks.find(newParentId)
+
+                if newParent is not None:
+                    currParent.children.remove(currTask)
+
+                    # we don't append in children list if the new parent is the current task
+                    # but that condition is checked before we reach here so don't need an if condition
+                    newParent.children.append(currTask)
+                    currTask.parent = newParent
+            del prop['parent']
+
+        deb('updateTask: before currTask prop'+ str(currTask.prop))
+        currTask.prop.update(prop)
+        deb('updateTask: after currTask'+ str(currTask.prop))
+        self.writeToFile(self.fileName)
+
+
+
+
+# create a tree obj based on the input prop and val and insert
+    def addTask(self, prop):
+        tasks = self.tasks
+        newId = None
+        parentId = None
+        for key, val in prop.items():
+            if (key == 'id'):
+               newId = val 
+            elif (key == 'parent'):
+               parentId = val
+           
+        if newId is None:
+            # create a new id for the task
+            newId = self.createId()
+        else:
+            # delete the key, value pair from the dictionary
+            del prop['id']
+
+        deb('addTask: creating new task with id =' + newId)
+
+        if parentId is not None:
+            deb('addTask: input parentId = ' + parentId)
+            del prop['parent']
+
+        task = Tree(id=newId, prop=prop)
+        deb('addTask: created task object. Now inserting it into the tree')
+        tasks.insert(task, parentId)
+        self.writeToFile(self.fileName)
+    
     def finishTask(self):
         deb('finishTask: to delete::'+ str(args.id))
-        self.tasks.delete(int(args.id))
+        self.tasks.delete(args.id)
         self.writeToFile(self.fileName)
+
+    def display(self):
+        self.tasks.display()
 
     def createArgsObj(self):
         parser = argparse.ArgumentParser()
@@ -103,6 +153,11 @@ class TaskManager:
         fin.add_argument('id')
         fin.set_defaults(func=taskManager.finishTask)
 
+        # add 'update' as a subparser
+        upd = subparsers.add_parser("update")
+        upd.add_argument('allPropVal', nargs='*')
+        upd.set_defaults(func=taskManager.updateTask)
+
         # add 'list' as a subparser
         lst = subparsers.add_parser("list")
         lst.set_defaults(func=taskManager.display)
@@ -110,7 +165,7 @@ class TaskManager:
         return parser.parse_args()
 
     def createDict(self, obj):
-        deb('createDict for obj id= ' + str(obj.id))
+        deb('createDict for taskId= ' + str(obj.id))
         if obj is None:
             return {}
 
@@ -125,6 +180,7 @@ class TaskManager:
             for childObj in obj.children:
                 cDict = self.createDict(childObj)
                 resDict.update(cDict)
+        deb('createDict: taskId' + str(obj.id) + ', final dictionary object is:' + str(resDict))
         return resDict
         
 
@@ -132,6 +188,7 @@ class TaskManager:
         with open(fileName,'wb') as output:
             json.dump(self.tasks, output, default=self.createDict)
 
+    # Decode the dict object obtained from json file and convert it into Tree object
     def str_hook(self, obj):
         if isinstance(obj, dict):
             return {k.encode('utf-8') if isinstance(k, unicode) else k :
@@ -151,32 +208,37 @@ class TaskManager:
         if data == {}:
             raise Exception('could not read Json file, or the file was empty!')
 
-
         resDict = {}
         parentId = -1
         for key, value in data.items():
             deb('readFromFile: key is = ' + key)
             deb('readFromFile: value is = ' + str(value))
-            t = Tree(id=int(key))
+            t = Tree(id=key)
             # if resDict has the object already use that
-            if int(key) in resDict:
-                t = resDict[int(key)]
+            if key in resDict:
+                t = resDict[key]
 
             # set the other properties
             t.prop = value['prop']
-            if int(value['parentId']) != int(key):
-                if int(value['parentId']) in resDict:
-                    parent = resDict[int(value['parentId'])]
+            if str(value['parentId']) != str(key):
+                deb('readFromFile: ParentId = ' + value['parentId'] +', key:'+ key)
+                if value['parentId'] in resDict:
+                    deb('readFromFile: key=' + key + ', parentId in resDict. ParentId:'+value['parentId'])
+                    parent = resDict[value['parentId']]
                     t.parent = parent
                     parent.children.append(t)
                 else:
-                    resDict[int(value['parentId'])] = Tree(int(value['parentId']))
-                    resDict[int(value['parentId'])].children.append(t)
+                    deb('readFromFile: key=' + key + ', parentId not in resDict. ParentId:'+value['parentId'])
+                    pTree = Tree(value['parentId'])
+                    t.parent = pTree
+                    pTree.children.append(t)
+                    resDict[value['parentId']] = pTree
             else:
+                deb('readFromFile: found root. ParentId = ' + value['parentId'] +', key:'+ key)
                 t.parent = t
-                parentId = int(value['parentId'])
+                parentId = value['parentId']
 
-            resDict[int(key)] = t
+            resDict[key] = t
 
         if parentId == -1:
             raise Exception('no top level task present in the json file')
