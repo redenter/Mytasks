@@ -6,6 +6,8 @@ import random;
 import cPickle as pickle
 import copy
 import json
+import textwrap
+from itertools import izip_longest as zip_longest
 
 
 
@@ -19,50 +21,66 @@ class TaskManager:
 # should be able to update tasks
 
     def __init__(self, fileName=None):
+
+        fileName = 'tasks.json' if fileName is None else fileName
+        # get the args object
+        self.args = self.createArgsObj()
+        self.fileName = (self.args.task_dir if self.args.task_dir is not None else '') + fileName
+
+        #we want exception to be handled only when reading the file. Exceptions above 
+        # would be because of a code error and not input.
         try:
-            self.tasks = self.readFromFile(fileName)
-            self.fileName = fileName
+            self.tasks = self.readFromFile(self.fileName)
         except:
             self.tasks = Tree(0)
 
     def createId(self):
         return str(random.randint(1, 20000))
     
-    def getPropDictFromCL(self):
+    def getPropDictFromCL(self, clInputList, currProp='desc'):
         prop = {} 
+        if clInputList is None:
+            return prop
 
         newVal = ''
-        currProp = 'desc'
         elem = ''
-        for elem in args.allPropVal:
+        for elem in clInputList:
             pos = elem.find(':') 
             if pos == -1:
                 newVal = newVal + ' ' + elem
             else:
                 if newVal != '' :
+                    if currProp is None or currProp == '':
+                        raise Exception('property not provided')
                     prop[currProp.strip()] = newVal.strip()
                 currProp = elem[:pos]
                 newVal = elem[pos+1:]
 
         if newVal != '' :
+            if currProp is None or currProp == '':
+                raise Exception('property not provided')
             prop[currProp.strip()] = newVal.strip()
 
+        return prop
+
+    def add(self):
+        prop = self.getPropDictFromCL(clInputList=args.allPropVal)
         if prop == {}:
             raise Exception('improper arguments')
         
         for p,v in prop.items():
-            deb('getPropDictFromCL:: prop= '+p+' val= '+v)
-        return prop
-
-    def add(self):
-        prop = self.getPropDictFromCL()
+            deb('add:: prop= '+p+' val= '+v)
         self.addTask(prop)
 
     # right now update appends prop dicts, replacing the old ones with the new values wherever there
     # is a clash. 
     # TODO: add optional parameters to completely replace the existing parameters
     def updateTask(self):
-        prop = self.getPropDictFromCL()
+        prop = self.getPropDictFromCL(clInputList=args.allPropVal, currProp='id')
+
+        if prop == {}:
+            raise Exception('improper arguments')
+
         deb('updateTask: got::'+str(prop))
         if 'id' not in prop:
             raise Exception('no task id provided for update. Try add or provide the task id')
@@ -74,7 +92,7 @@ class TaskManager:
         if 'parent' in prop:
             deb('updateTask: parent in input prop. New parent id is::'+ prop['parent'])
             currParent = currTask.parent
-            deb('updateTask: current parent is:'+currParent.id)
+            deb('updateTask: current parent is:'+ str(currParent.id))
             newParentId = prop['parent']
             
             if newParentId != currParent.id:
@@ -134,8 +152,83 @@ class TaskManager:
         self.tasks.delete(args.id)
         self.writeToFile(self.fileName)
 
-    def display(self):
-        self.tasks.display()
+    def formatTask(self, strList, widthList,initIndent=2, separation=4):
+        wrList=[]
+        #print strList
+        for i, el in enumerate(strList):
+            wrList.append(textwrap.wrap(el, width=widthList[i]))
+        
+        #create format string
+        fString = ' '*initIndent
+        for i,val in enumerate(widthList):
+            fString += '{'+str(i)+':'+str(val)+'}' + ' '*separation
+
+        #print fString
+
+        results = []
+        for z in zip_longest(*wrList, fillvalue=''):
+            results.append(fString.format(*z))
+        return '\n'.join(results)
+
+    def passesFilter(self, task, filters):
+      if task.prop is not None and task.prop != {}:
+          fullProp = {}
+          fullProp['id'] = str(task.id)
+          fullProp['parent'] = str(task.parent.id) if task.parent is not None else ''
+          fullProp.update(task.prop)
+
+          if(filters == {}):
+             return True
+          for k,v in filters.items():
+              if k not in fullProp:
+                  return False
+              if v == fullProp[k]:
+                  return True
+              else:
+                  if k != 'id' and k!='parent' and v in fullProp[k]:
+                      return True
+                  return False
+      else:
+          return False
+
+
+          
+
+            
+            
+    def display(self, tasks=None, level=0):
+        filters = self.getPropDictFromCL(clInputList=args.filters, currProp='project')
+        if tasks is None:
+            print '\n'
+            strList = ['Task Id','Parent Id','Task Description','project', 'tag']
+            widthList = [10,10,40,20,20]
+            print self.formatTask(strList, widthList)
+            print ''
+
+            t = self.tasks
+        else:
+            t = tasks
+
+        if self.passesFilter(t, filters):
+            strList = [str(t.id), str(t.parent.id), 
+                       t.prop['desc'] if 'desc' in t.prop else '', 
+                       t.prop['project'] if 'project' in t.prop else '',
+                       t.prop['tag'] if 'tag' in t.prop else '']
+            widthList = [10,10,40,20,20]
+            print self.formatTask(strList, widthList)
+            print ''
+
+        if args.level is not None:
+            if int(args.level) <= level:
+                return
+
+        level += 1
+
+        for ch in t.children:
+            self.display(ch, level)
+
+         
+        #self.tasks.display()
 
     def createArgsObj(self):
         parser = argparse.ArgumentParser()
@@ -146,21 +239,23 @@ class TaskManager:
         # add 'add' as a subparser
         add = subparsers.add_parser("add")
         add.add_argument('allPropVal', nargs='*')
-        add.set_defaults(func=taskManager.add)
+        add.set_defaults(func=self.add)
 
         # add 'fin' as a subparser
         fin = subparsers.add_parser("fin")
         fin.add_argument('id')
-        fin.set_defaults(func=taskManager.finishTask)
+        fin.set_defaults(func=self.finishTask)
 
         # add 'update' as a subparser
         upd = subparsers.add_parser("update")
         upd.add_argument('allPropVal', nargs='*')
-        upd.set_defaults(func=taskManager.updateTask)
+        upd.set_defaults(func=self.updateTask)
 
         # add 'list' as a subparser
         lst = subparsers.add_parser("list")
-        lst.set_defaults(func=taskManager.display)
+        lst.add_argument('-f','--filters', nargs='*')
+        lst.add_argument('-l','--level', help='list tasks only up to the specified depth. For example, if level = 1 only the top level tasks will be displayed.' )
+        lst.set_defaults(func=self.display)
 
         return parser.parse_args()
 
@@ -192,8 +287,7 @@ class TaskManager:
     def str_hook(self, obj):
         if isinstance(obj, dict):
             return {k.encode('utf-8') if isinstance(k, unicode) else k :
-                    self.str_hook(v)
-                    for k,v in obj.items()}
+                    self.str_hook(v) for k,v in obj.items()}
         else:
             return obj.encode('utf-8') if isinstance(obj, unicode) else obj
         
@@ -209,7 +303,7 @@ class TaskManager:
             raise Exception('could not read Json file, or the file was empty!')
 
         resDict = {}
-        parentId = -1
+        parentId = ''
         for key, value in data.items():
             deb('readFromFile: key is = ' + key)
             deb('readFromFile: value is = ' + str(value))
@@ -221,26 +315,26 @@ class TaskManager:
             # set the other properties
             t.prop = value['prop']
             if str(value['parentId']) != str(key):
-                deb('readFromFile: ParentId = ' + value['parentId'] +', key:'+ key)
+                deb('readFromFile: ParentId = ' + str(value['parentId'])+', key:'+ str(key))
                 if value['parentId'] in resDict:
-                    deb('readFromFile: key=' + key + ', parentId in resDict. ParentId:'+value['parentId'])
+                    deb('readFromFile: key=' + str(key) + ', parentId in resDict. ParentId:'+ str(value['parentId']))
                     parent = resDict[value['parentId']]
                     t.parent = parent
                     parent.children.append(t)
                 else:
-                    deb('readFromFile: key=' + key + ', parentId not in resDict. ParentId:'+value['parentId'])
+                    deb('readFromFile: key=' + str(key) + ', parentId not in resDict. ParentId:'+ str(value['parentId']))
                     pTree = Tree(value['parentId'])
                     t.parent = pTree
                     pTree.children.append(t)
                     resDict[value['parentId']] = pTree
             else:
-                deb('readFromFile: found root. ParentId = ' + value['parentId'] +', key:'+ key)
+                deb('readFromFile: found root. ParentId = ' + str(value['parentId']) +', key:'+ str(key))
                 t.parent = t
                 parentId = value['parentId']
 
             resDict[key] = t
 
-        if parentId == -1:
+        if parentId == '':
             raise Exception('no top level task present in the json file')
 
         deb('readFromFile: the final dict file is ' + str(self.createDict(resDict[parentId])))
@@ -248,6 +342,6 @@ class TaskManager:
     
 
 taskManager = TaskManager('newf.json')
-args = taskManager.createArgsObj()
+args = taskManager.args
 args.func()
 

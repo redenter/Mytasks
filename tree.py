@@ -27,8 +27,9 @@ class Tree:
         else:
             child.parent = parent
             parent.children.append(child)
-        deb('tree.insert:: parent is ' + parent.id + ':grandpa:' + parent.parent.id)
-        deb('tree.insert:: child is ' + child.id + ':parent:' + child.parent.id)
+        #if parent.parent is not None:
+        #    deb('tree.insert:: parent is ' + parent.id + ':grandpa:' + parent.parent.id)
+        #deb('tree.insert:: child is ' + child.id + ':parent:' + child.parent.id)
 
     # does a simple search as the insert does 
     # is a straightforward addition to the tree
