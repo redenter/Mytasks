@@ -48,6 +48,7 @@ To add a task, simply provide all the necessary key value pairs. No key is neede
 
 `tasks add <task-description> <other properties>`
 
+Note: Any property apart from task id, parent task id , description, project name, tag name will not be displayed by the list functionality as of now, even though the key-value will be added to the task. The option to configure the display will be added in the upcoming release.
 
 For e.g: 
 
@@ -90,7 +91,7 @@ $ tasks list
 3.
 
 ```
-$ tasks add grow and sell potatoes, become a millionaire project:farming tag:sample
+$ tasks add grow and sell potatoes, become a millionaire project:farming tag:sample expected_issues: don't have farmland.
 
 $ tasks list
 

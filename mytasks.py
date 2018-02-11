@@ -200,8 +200,8 @@ class TaskManager:
         filters = self.getPropDictFromCL(clInputList=args.filters, currProp='project')
         if tasks is None:
             print '\n'
-            strList = ['Task Id','Parent Id','Task Description','project', 'tag']
-            widthList = [10,10,40,20,20]
+            strList = ['Task Id','Parent Id','Task Description','Project', 'Tag', 'Subtasks']
+            widthList = [10,10,40,20,20,8]
             print self.formatTask(strList, widthList)
             print ''
 
@@ -213,8 +213,9 @@ class TaskManager:
             strList = [str(t.id), str(t.parent.id), 
                        t.prop['desc'] if 'desc' in t.prop else '', 
                        t.prop['project'] if 'project' in t.prop else '',
-                       t.prop['tag'] if 'tag' in t.prop else '']
-            widthList = [10,10,40,20,20]
+                       t.prop['tag'] if 'tag' in t.prop else '',
+                       str(len(t.children)) if t.children is not None else 0 ]
+            widthList = [10,10,40,20,20,8]
             print self.formatTask(strList, widthList)
             print ''
 
