@@ -68,6 +68,14 @@ class Tree:
         for ch in t.children:
             t.display(ch)
 
+    # append the prop to all subtree's props
+    def addPropToSubtree(self, id, prop):
+        t = self.find(id)
+        t.prop.update(prop)
+
+        for ch in t.children:
+            ch.addPropToSubtree(ch.id, prop)
+
 
     # deletes the entire subtree associated with the id.
     # use carefully

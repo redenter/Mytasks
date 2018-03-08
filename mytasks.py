@@ -8,7 +8,7 @@ import copy
 import json
 import textwrap
 from itertools import izip_longest as zip_longest
-
+import datetime
 
 
 class TaskManager:
@@ -25,6 +25,7 @@ class TaskManager:
         fileName = 'tasks.json' if fileName is None else fileName
         # get the args object
         self.args = self.createArgsObj()
+        self.conf = self.getDefaultConf()
         self.fileName = (self.args.task_dir if self.args.task_dir is not None else '') + fileName
 
         #we want exception to be handled only when reading the file. Exceptions above 
@@ -37,6 +38,15 @@ class TaskManager:
     def createId(self):
         return str(random.randint(1, 20000))
     
+    def getDefaultConf(self):
+        conf = {}
+        conf['displayList'] = [('Task Id', 10), ('Parent Id', 10), ('Task Description', 40), ('Project', 20), 
+                            ('Tag', 20), ('Subtasks', 8)]
+        conf['maxDisplay'] = 40
+        return conf
+
+
+    # decode the properties provided as command line input
     def getPropDictFromCL(self, clInputList, currProp='desc'):
         prop = {} 
         if clInputList is None:
@@ -141,7 +151,7 @@ class TaskManager:
         if parentId is not None:
             deb('addTask: input parentId = ' + parentId)
             del prop['parent']
-
+        prop['completed'] = 0
         task = Tree(id=newId, prop=prop)
         deb('addTask: created task object. Now inserting it into the tree')
         tasks.insert(task, parentId)
@@ -149,7 +159,8 @@ class TaskManager:
     
     def finishTask(self):
         deb('finishTask: to delete::'+ str(args.id))
-        self.tasks.delete(args.id)
+        self.tasks.addPropToSubtree(args.id, {'completed':1, 'completion_time':str(datetime.datetime.now())})
+        #self.tasks.delete(args.id)
         self.writeToFile(self.fileName)
 
     def formatTask(self, strList, widthList,initIndent=2, separation=4):
@@ -182,10 +193,10 @@ class TaskManager:
           for k,v in filters.items():
               if k not in fullProp:
                   return False
-              if v == fullProp[k]:
+              if v == fullProp[k] or v == str(fullProp[k]):
                   return True
               else:
-                  if k != 'id' and k!='parent' and v in fullProp[k]:
+                  if k not in ('id', 'completed', 'parent') and v in fullProp[k]:
                       return True
                   return False
       else:
@@ -194,22 +205,38 @@ class TaskManager:
 
           
 
-            
-            
-    def display(self, tasks=None, level=0):
-        filters = self.getPropDictFromCL(clInputList=args.filters, currProp='project')
+    def displayAll(self):            
+        filt = self.getPropDictFromCL(clInputList=args.filters, currProp='project')
+        if args.completed:
+            filt.update({'completed':1})
+            self.display(filters=filt)
+        else:
+            filt.update({'completed':0})
+            self.display(filters=filt)
+            if args.include_completed:
+                filt.update({'completed':1})
+                print '\n'
+                print 'Completed Tasks'
+                self.display(filters = filt)
+                
+    def display(self, filters, tasks=None, level=0):
+
+        strNameList = []
+        widthList = []
+        for (strName, strLength) in self.conf['displayList']:
+            strNameList.append(strName)
+            widthList.append(strLength)
+
         if tasks is None:
             print '\n'
-            strList = ['Task Id','Parent Id','Task Description','Project', 'Tag', 'Subtasks']
-            widthList = [10,10,40,20,20,8]
-            print self.formatTask(strList, widthList)
+            print self.formatTask(strNameList, widthList)
             print ''
 
             t = self.tasks
         else:
             t = tasks
 
-        if self.passesFilter(t, filters):
+        if self.passesFilter(t, filters) and t.id != 0:
             strList = [str(t.id), str(t.parent.id), 
                        t.prop['desc'] if 'desc' in t.prop else '', 
                        t.prop['project'] if 'project' in t.prop else '',
@@ -226,7 +253,7 @@ class TaskManager:
         level += 1
 
         for ch in t.children:
-            self.display(ch, level)
+            self.display(tasks = ch, filters= filters, level = level)
 
          
         #self.tasks.display()
@@ -256,7 +283,9 @@ class TaskManager:
         lst = subparsers.add_parser("list")
         lst.add_argument('-f','--filters', nargs='*')
         lst.add_argument('-l','--level', help='list tasks only up to the specified depth. For example, if level = 1 only the top level tasks will be displayed.' )
-        lst.set_defaults(func=self.display)
+        lst.add_argument('-comp', '--completed',action='store_true')
+        lst.add_argument('-incHist', '--include_completed',action='store_true')
+        lst.set_defaults(func=self.displayAll)
 
         return parser.parse_args()
 
@@ -270,6 +299,8 @@ class TaskManager:
         objDict['children'] = [cObj.id for cObj in obj.children] if obj.children is not None else []
         objDict['parentId'] = obj.parent.id if obj.parent is not None else 0
         objDict['prop'] = obj.prop
+        if 'completed' not in objDict['prop']:
+            objDict['prop']['completed'] = 0
         resDict[obj.id] = objDict
         
         if obj.children is not None:
