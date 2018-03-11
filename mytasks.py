@@ -35,17 +35,12 @@ class TaskManager:
         except:
             self.tasks = Tree(0)
 
+        #new Tasks obj
+        self.tasksObj = Tasks()
+
     def createId(self):
         return str(random.randint(1, 20000))
     
-    def getDefaultConf(self):
-        conf = {}
-        conf['displayList'] = [('Task Id', 10), ('Parent Id', 10), ('Task Description', 40), ('Project', 20), 
-                            ('Tag', 20), ('Subtasks', 8)]
-        conf['maxDisplay'] = 40
-        return conf
-
-
     # decode the properties provided as command line input
     def getPropDictFromCL(self, clInputList, currProp='desc'):
         prop = {} 
@@ -77,90 +72,54 @@ class TaskManager:
         prop = self.getPropDictFromCL(clInputList=args.allPropVal)
         if prop == {}:
             raise Exception('improper arguments')
-        
-        for p,v in prop.items():
+
+        newId = self.createId()
+        parentId = 0
+        if 'id' in prop:
+            newId = prop['id']
+            del prop['id']
+
+        if 'parent' in prop:
+            newId = prop['parent']
+            del prop['parent']
+
+        for key, val in prop.items():
+            # display key value pairs provided
             deb('add:: prop= '+p+' val= '+v)
-        self.addTask(prop)
+           
+        self.tasksObj.addTask(newId, parentId, prop)
+        # update the file 
+        self.writeToFile(self.fileName)
 
     # right now update appends prop dicts, replacing the old ones with the new values wherever there
     # is a clash. 
     # TODO: add optional parameters to completely replace the existing parameters
-    def updateTask(self):
+    def update(self):
         prop = self.getPropDictFromCL(clInputList=args.allPropVal, currProp='id')
 
         if prop == {}:
             raise Exception('improper arguments')
 
-        deb('updateTask: got::'+str(prop))
+        deb('update: got::'+str(prop))
         if 'id' not in prop:
             raise Exception('no task id provided for update. Try add or provide the task id')
 
-        currTask = self.tasks.find(prop['id']) 
+        taskId = prop['id']
         del prop['id']
 
-        # need to change links if parent also needs to be updated
-        if 'parent' in prop:
-            deb('updateTask: parent in input prop. New parent id is::'+ prop['parent'])
-            currParent = currTask.parent
-            deb('updateTask: current parent is:'+ str(currParent.id))
-            newParentId = prop['parent']
-            
-            if newParentId != currParent.id:
-                if newParentId == currTask.id:
-                    newParentId = 0
-                
-                newParent = self.tasks.find(newParentId)
-
-                if newParent is not None:
-                    currParent.children.remove(currTask)
-
-                    # we don't append in children list if the new parent is the current task
-                    # but that condition is checked before we reach here so don't need an if condition
-                    newParent.children.append(currTask)
-                    currTask.parent = newParent
-            del prop['parent']
-
-        deb('updateTask: before currTask prop'+ str(currTask.prop))
-        currTask.prop.update(prop)
-        deb('updateTask: after currTask'+ str(currTask.prop))
-        self.writeToFile(self.fileName)
-
-
-
-
-# create a tree obj based on the input prop and val and insert
-    def addTask(self, prop):
-        tasks = self.tasks
-        newId = None
         parentId = None
-        for key, val in prop.items():
-            if (key == 'id'):
-               newId = val 
-            elif (key == 'parent'):
-               parentId = val
-           
-        if newId is None:
-            # create a new id for the task
-            newId = self.createId()
-        else:
-            # delete the key, value pair from the dictionary
-            del prop['id']
-
-        deb('addTask: creating new task with id =' + newId)
-
-        if parentId is not None:
-            deb('addTask: input parentId = ' + parentId)
+        if 'parent' in prop:
+            parentId = prop['parent']
             del prop['parent']
-        prop['completed'] = 0
-        task = Tree(id=newId, prop=prop)
-        deb('addTask: created task object. Now inserting it into the tree')
-        tasks.insert(task, parentId)
+
+        self.tasksObj.updateTask(taskId, parentId, prop)
+
+        # need to change links if parent also needs to be updated
         self.writeToFile(self.fileName)
-    
+
     def finishTask(self):
-        deb('finishTask: to delete::'+ str(args.id))
-        self.tasks.addPropToSubtree(args.id, {'completed':1, 'completion_time':str(datetime.datetime.now())})
-        #self.tasks.delete(args.id)
+        deb('finishTask: to archive::'+ str(args.id))
+        self.tasksObj.archiveTask(args.id)
         self.writeToFile(self.fileName)
 
     def formatTask(self, strList, widthList,initIndent=2, separation=4):
@@ -277,7 +236,7 @@ class TaskManager:
         # add 'update' as a subparser
         upd = subparsers.add_parser("update")
         upd.add_argument('allPropVal', nargs='*')
-        upd.set_defaults(func=self.updateTask)
+        upd.set_defaults(func=self.update)
 
         # add 'list' as a subparser
         lst = subparsers.add_parser("list")
@@ -289,31 +248,10 @@ class TaskManager:
 
         return parser.parse_args()
 
-    def createDict(self, obj):
-        deb('createDict for taskId= ' + str(obj.id))
-        if obj is None:
-            return {}
-
-        resDict = {}
-        objDict = {}
-        objDict['children'] = [cObj.id for cObj in obj.children] if obj.children is not None else []
-        objDict['parentId'] = obj.parent.id if obj.parent is not None else 0
-        objDict['prop'] = obj.prop
-        if 'completed' not in objDict['prop']:
-            objDict['prop']['completed'] = 0
-        resDict[obj.id] = objDict
-        
-        if obj.children is not None:
-            for childObj in obj.children:
-                cDict = self.createDict(childObj)
-                resDict.update(cDict)
-        deb('createDict: taskId' + str(obj.id) + ', final dictionary object is:' + str(resDict))
-        return resDict
-        
 
     def writeToFile(self, fileName):
         with open(fileName,'wb') as output:
-            json.dump(self.tasks, output, default=self.createDict)
+            json.dump(self.tasks, output, default=self.tasksObj.createDict)
 
     # Decode the dict object obtained from json file and convert it into Tree object
     def str_hook(self, obj):
@@ -369,7 +307,7 @@ class TaskManager:
         if parentId == '':
             raise Exception('no top level task present in the json file')
 
-        deb('readFromFile: the final dict file is ' + str(self.createDict(resDict[parentId])))
+        deb('readFromFile: the final dict file is ' + str(self.tasksObj.createDict(resDict[parentId])))
         return resDict[parentId]
     
 
