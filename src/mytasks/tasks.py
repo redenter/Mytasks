@@ -1,25 +1,28 @@
+from tree import Tree; 
+from tree import deb
 
 # A collection of tasks 
 # Instances of this class should be able to add a task
 # to the collection, delete it, update it and provide a list or a subset of
 # collection for display
 class Tasks:
+    ROOT_TASK_ID = 0
     def __init__(self, tasksObj=None):
         if tasksObj is not None:
             self.tasks = tasksObj.tasks
         else:
-            self.tasks = Tree(0)
+            self.tasks = Tree(Tasks.ROOT_TASK_ID)
 
 # create a tree obj based on the input prop and val and insert
     def addTask(self, taskId, parentTaskId, prop):
         tasks = self.tasks
-        if taskId is None or taskId <= 0:
+        if taskId is None or taskId <= Tasks.ROOT_TASK_ID:
             raise Exception('Cannot create task with taskId ' + taskId);
-        if parentTaskId is None or parentTaskId < 0:
+        if parentTaskId is None or parentTaskId < Tasks.ROOT_TASK_ID:
             raise Exception('Cannot create task with parentTaskId ' + parentTaskId);
 
-        deb('Tasks: addTask- creating new task with id =' + taskId +
-            ', parent task id =' + parentTaskId);
+        deb('Tasks: addTask- creating new task with id =' + str(taskId) +
+            ', parent task id =' + str(parentTaskId));
 
         prop['completed'] = 0
         task = Tree(id=taskId, prop=prop)
@@ -28,7 +31,7 @@ class Tasks:
 
 # update a task
     def updateTask(self, taskId, prop = None, parentId = None, updateSubtasks = False):
-        if taskId == 0:
+        if taskId == Tasks.ROOT_TASK_ID:
             raise Exception('Cannot update task with taskId: ' + taskId);
 
         # raise an exception if not found
@@ -36,7 +39,7 @@ class Tasks:
         if currTask is None:
             raise Exception('Cannot find task with task id = ' + taskId);
         
-        if self.__isArchived(taskId):
+        if self.__isArchived(currTask):
             raise Exception('Cannot update archived task')
 
         # nothing to update 
@@ -50,7 +53,7 @@ class Tasks:
             
             if parentId != currParent.id:
                 if parentId == currTask.id:
-                    newParentId = 0
+                    newParentId = Tasks.ROOT_TASK_ID
                 
                 newParent = self.tasks.find(parentId)
 
@@ -97,7 +100,9 @@ class Tasks:
             
     def createDict(self):
         return self.__createDictForTask(self.tasks)
+
     # create an object dictionary
+    # similar to a serialization operation
     def __createDictForTask(self, tasks):
         if tasks is None:
             return {} 
@@ -107,7 +112,7 @@ class Tasks:
         resDict = {}
         tasksDict = {}
         tasksDict['children'] = [cObj.id for cObj in tasks.children] if tasks.children is not None else []
-        tasksDict['parentId'] = tasks.parent.id if tasks.parent is not None else 0
+        tasksDict['parentId'] = tasks.parent.id if tasks.parent is not None else Tasks.ROOT_TASK_ID
         tasksDict['prop'] = tasks.prop
         if 'completed' not in tasksDict['prop']:
             tasksDict['prop']['completed'] = 0
@@ -117,9 +122,56 @@ class Tasks:
             for childObj in tasks.children:
                 cDict = self.__createDictForTask(childObj)
                 resDict.update(cDict)
-        deb('Tasks: createDict- taskId' + str(tasks.id) + ', final dictionary tasksect is:' + str(resDict))
+        deb('Tasks: createDict- taskId' + str(tasks.id) + ', final dictionary is:' + str(resDict))
         return resDict
     
     # create a tasks object from a dictionary
-    #def buildFromDict(self, inputDict):
+    # we expect the dictionary to be in a certain way. 
+    # Need some checks in place to make sure that is obeyed
+    def buildFromDict(self, inputDict):
+        if inputDict == {}:
+            raise Exception('could not read Json file, or the file was empty!')
 
+        resDict = {}
+        parentId = ''
+        for key, value in inputDict.items():
+            deb('buildFromDict: key is = ' + key)
+            deb('buildFromDict: value is = ' + str(value))
+            t = Tree(id=key)
+            # if resDict has the object already use that
+            if key in resDict:
+                t = resDict[key]
+
+            # set the other properties
+            t.prop = value['prop']
+            if str(value['parentId']) != str(key):
+                deb('buildFromDict: ParentId = ' + str(value['parentId'])+', key:'+ str(key))
+                if value['parentId'] in resDict:
+                    deb('buildFromDict: key=' + str(key) + ', parentId in resDict. ParentId:'+ str(value['parentId']))
+                    parent = resDict[value['parentId']]
+                    t.parent = parent
+                    parent.children.append(t)
+                else:
+                    deb('buildFromDict: key=' + str(key) + ', parentId not in resDict. ParentId:'+ str(value['parentId']))
+                    pTree = Tree(value['parentId'])
+                    t.parent = pTree
+                    pTree.children.append(t)
+                    resDict[value['parentId']] = pTree
+            else:
+                deb('buildFromDict: found root. ParentId = ' + str(value['parentId']) +', key:'+ str(key))
+                t.parent = Tasks.ROOT_TASK_ID
+                parentId = value['parentId']
+
+            resDict[key] = t
+
+        if parentId == '':
+            raise Exception('no top level task present in the json file')
+        return resDict[parentId]
+
+t = Tasks()
+t.addTask(10,0,{})
+t.addTask(11,10,{})
+t.updateTask(taskId = 10, prop={'test':1})
+print t.createDict()
+t.archiveTask(10)
+print t.createDict()
