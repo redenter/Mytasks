@@ -168,6 +168,80 @@ class Tasks:
             raise Exception('no top level task present in the json file')
         return resDict[parentId]
 
+    # read from json file.
+    def readFromFile(self, filename):
+        data = {}
+        with open(filename, 'rb') as output:
+            data = json.loads(output.read(), object_hook=self.str_hook)
+
+        deb('readFromFile: keys are = ' + str(data.keys()))
+        if data == {}:
+            raise Exception('could not read Json file, or the file was empty!')
+        return self.buildFromDict(data)
+
+    # Decode the dict object obtained from json file and convert it into Tree object
+    def str_hook(self, obj):
+        if isinstance(obj, dict):
+            return {k.encode('utf-8') if isinstance(k, unicode) else k :
+                    self.str_hook(v) for k,v in obj.items()}
+        else:
+            return obj.encode('utf-8') if isinstance(obj, unicode) else obj
+
+    def writeToFile(self, fileName):
+        with open(fileName,'wb') as output:
+            json.dump(self.tasks, output, default=self.tasksObj.createDict)
+
+    # read from json file.
+#    def readFromFile(self, filename):
+#        data = {}
+#        with open(filename, 'rb') as output:
+#            data = json.loads(output.read(), object_hook=self.str_hook)
+#
+#        deb('readFromFile: keys are = ' + str(data.keys()))
+#        if data == {}:
+#            raise Exception('could not read Json file, or the file was empty!')
+#
+#        resDict = {}
+#        parentId = ''
+#        for key, value in data.items():
+#            deb('readFromFile: key is = ' + key)
+#            deb('readFromFile: value is = ' + str(value))
+#            t = Tree(id=key)
+#            # if resDict has the object already use that
+#            if key in resDict:
+#                t = resDict[key]
+#
+#            # set the other properties
+#            t.prop = value['prop']
+#            if str(value['parentId']) != str(key):
+#                deb('readFromFile: ParentId = ' + str(value['parentId'])+', key:'+ str(key))
+#                if value['parentId'] in resDict:
+#                    deb('readFromFile: key=' + str(key) + ', parentId in resDict. ParentId:'+ str(value['parentId']))
+#                    parent = resDict[value['parentId']]
+#                    t.parent = parent
+#                    parent.children.append(t)
+#                else:
+#                    deb('readFromFile: key=' + str(key) + ', parentId not in resDict. ParentId:'+ str(value['parentId']))
+#                    pTree = Tree(value['parentId'])
+#                    t.parent = pTree
+#                    pTree.children.append(t)
+#                    resDict[value['parentId']] = pTree
+#            else:
+#                deb('readFromFile: found root. ParentId = ' + str(value['parentId']) +', key:'+ str(key))
+#                t.parent = t
+#                parentId = value['parentId']
+#
+#            resDict[key] = t
+#
+#        if parentId == '':
+#            raise Exception('no top level task present in the json file')
+#
+#        deb('readFromFile: the final dict file is ' + str(self.tasksObj.createDict(resDict[parentId])))
+#        return resDict[parentId]
+#
+
+
+
 t = Tasks()
 t.addTask(10,0,{})
 t.addTask(11,10,{})
