@@ -1,5 +1,6 @@
 from tree import Tree; 
 from tree import deb
+import datetime
 
 # A collection of tasks 
 # Instances of this class should be able to add a task
@@ -14,12 +15,19 @@ class Tasks:
             self.tasks = Tree(Tasks.ROOT_TASK_ID)
 
 # create a tree obj based on the input prop and val and insert
-    def addTask(self, taskId, parentTaskId, prop):
-        tasks = self.tasks
+    def addTask(self, taskId, parentTaskId=None, prop=None):
         if taskId is None or taskId <= Tasks.ROOT_TASK_ID:
-            raise Exception('Cannot create task with taskId ' + taskId);
-        if parentTaskId is None or parentTaskId < Tasks.ROOT_TASK_ID:
-            raise Exception('Cannot create task with parentTaskId ' + parentTaskId);
+            raise Exception('Cannot create task with taskId ' + str(taskId));
+
+        if parentTaskId is None:
+            parentTaskId = Tasks.ROOT_TASK_ID
+
+        elif parentTaskId < Tasks.ROOT_TASK_ID:
+            raise Exception('Cannot create task with parentTaskId ' + str(parentTaskId));
+
+
+        if prop is None:
+            prop = {}
 
         deb('Tasks: addTask- creating new task with id =' + str(taskId) +
             ', parent task id =' + str(parentTaskId));
@@ -27,7 +35,7 @@ class Tasks:
         prop['completed'] = 0
         task = Tree(id=taskId, prop=prop)
         deb('Tasks: addTask- created task object. Now inserting it into the tree')
-        tasks.insert(task, parentTaskId)
+        self.tasks.insert(task, parentTaskId)
 
 # update a task
     def updateTask(self, taskId, prop = None, parentId = None, updateSubtasks = False):
@@ -242,10 +250,10 @@ class Tasks:
 
 
 
-t = Tasks()
-t.addTask(10,0,{})
-t.addTask(11,10,{})
-t.updateTask(taskId = 10, prop={'test':1})
-print t.createDict()
-t.archiveTask(10)
-print t.createDict()
+#t = Tasks()
+#t.addTask(10,0,{})
+#t.addTask(11,10,{})
+#t.updateTask(taskId = 10, prop={'test':1})
+#print t.createDict()
+#t.archiveTask(10)
+#print t.createDict()
