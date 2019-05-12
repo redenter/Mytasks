@@ -23,8 +23,8 @@ class Tasks:
             parentTaskId = Tasks.ROOT_TASK_ID
 
         elif parentTaskId < Tasks.ROOT_TASK_ID:
-            raise Exception('Cannot create task with parentTaskId ' + str(parentTaskId));
-
+            raise Exception('Cannot create task with parentTaskId ' + 
+                            str(parentTaskId));
 
         if prop is None:
             prop = {}
@@ -34,11 +34,13 @@ class Tasks:
 
         prop['completed'] = 0
         task = Tree(id=taskId, prop=prop)
-        deb('Tasks: addTask- created task object. Now inserting it into the tree')
+        deb('Tasks: addTask- created task object. ' +
+            'Now inserting it into the tree')
         self.tasks.insert(task, parentTaskId)
 
 # update a task
-    def updateTask(self, taskId, prop = None, parentId = None, updateSubtasks = False):
+    def updateTask(self, taskId, prop = None, parentId = None, 
+                   updateSubtasks = False):
         if taskId == Tasks.ROOT_TASK_ID:
             raise Exception('Cannot update task with taskId: ' + taskId);
 
@@ -55,9 +57,9 @@ class Tasks:
             return
 
         if parentId is not None:
-            deb('Tasks: updateTask- new parent id is: '+ parentId)
+            deb('Tasks: updateTask- new parent id is: ' + str(parentId))
             currParent = currTask.parent
-            deb('updateTask: current parent is:'+ str(currParent.id))
+            deb('updateTask: current parent is:' + str(currParent.id))
             
             if parentId != currParent.id:
                 if parentId == currTask.id:
@@ -68,20 +70,32 @@ class Tasks:
                 if newParent is not None:
                     currParent.children.remove(currTask)
 
-                    # we don't append in children list if the new parent is the current task
-                    # but that condition is checked before we reach here so don't need an if condition
+                    # we don't append in children list if the new parent is 
+                    # the current task but that condition is checked before 
+                    # we reach here so don't need an if condition
                     newParent.children.append(currTask)
                     currTask.parent = newParent
 
         if prop is not None:
-            deb('Tasks - updateTask: before updating currTask prop '+ str(currTask.prop))
+            deb('Tasks - updateTask: before updating currTask prop ' + 
+                str(currTask.prop))
             if updateSubtasks:
                 self.__updateSubtasks(currTask, prop)
             else:
                 currTask.prop.update(prop)
 
-            deb('Tasks - updateTask: after updating currTask prop'+ str(currTask.prop))
+            deb('Tasks - updateTask: after updating currTask prop' + 
+                str(currTask.prop))
  
+       
+    # this routine updates the task and all associated subtasks 
+    # with the provided properties
+    def __updateSubtasks(self, currTask, prop):
+        currTask.prop.update(prop)
+
+        for ch in currTask.children:
+            self.__updateSubtasks(ch.id, prop)
+
     def archiveTask(self, taskId):
         task = self.tasks.find(taskId)
         if task is None:
@@ -89,17 +103,10 @@ class Tasks:
  
         if self.__isArchived(task):
             return
-        completionDict = {'completed':1, 'completion_time':str(datetime.datetime.now())}
+        completionDict = {'completed':1, 
+                          'completion_time':str(datetime.datetime.now())}
         self.__updateSubtasks(task, completionDict)
 
-        
-    # this routine updates the task and all associated subtasks with the provided properties
-    def __updateSubtasks(self, currTask, prop):
-        currTask.prop.update(prop)
-
-        for ch in currTask.children:
-            self.__updateSubtasks(ch.id, prop)
-    
     # is completed
     def __isArchived(self, task):
         if 'completed' not in task.prop:
@@ -130,7 +137,8 @@ class Tasks:
             for childObj in tasks.children:
                 cDict = self.__createDictForTask(childObj)
                 resDict.update(cDict)
-        deb('Tasks: createDict- taskId' + str(tasks.id) + ', final dictionary is:' + str(resDict))
+        deb('Tasks: createDict- taskId' + str(tasks.id) + 
+            ', final dictionary is:' + str(resDict))
         return resDict
     
     # create a tasks object from a dictionary
@@ -155,18 +163,21 @@ class Tasks:
             if str(value['parentId']) != str(key):
                 deb('buildFromDict: ParentId = ' + str(value['parentId'])+', key:'+ str(key))
                 if value['parentId'] in resDict:
-                    deb('buildFromDict: key=' + str(key) + ', parentId in resDict. ParentId:'+ str(value['parentId']))
+                    deb('buildFromDict: key=' + str(key) + 
+                        ', parentId in resDict. ParentId:'+ str(value['parentId']))
                     parent = resDict[value['parentId']]
                     t.parent = parent
                     parent.children.append(t)
                 else:
-                    deb('buildFromDict: key=' + str(key) + ', parentId not in resDict. ParentId:'+ str(value['parentId']))
+                    deb('buildFromDict: key=' + str(key) + 
+                        ', parentId not in resDict. ParentId:'+ str(value['parentId']))
                     pTree = Tree(value['parentId'])
                     t.parent = pTree
                     pTree.children.append(t)
                     resDict[value['parentId']] = pTree
             else:
-                deb('buildFromDict: found root. ParentId = ' + str(value['parentId']) +', key:'+ str(key))
+                deb('buildFromDict: found root. ParentId = ' + 
+                    str(value['parentId']) +', key:'+ str(key))
                 t.parent = Tasks.ROOT_TASK_ID
                 parentId = value['parentId']
 
@@ -187,7 +198,8 @@ class Tasks:
             raise Exception('could not read Json file, or the file was empty!')
         return self.buildFromDict(data)
 
-    # Decode the dict object obtained from json file and convert it into Tree object
+    # Decode the dict object obtained from json file 
+    # and convert it into Tree object
     def str_hook(self, obj):
         if isinstance(obj, dict):
             return {k.encode('utf-8') if isinstance(k, unicode) else k :

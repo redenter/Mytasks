@@ -8,16 +8,22 @@ class TestTasks(unittest.TestCase):
         self.assertEqual(t.tasks.id, 0)
         self.assertEqual(t.tasks.parent, t.tasks)
 
-    def test_basicAdd(self):
+    def setup_insert(self):
         t = mt.Tasks()
 
         # add first task
-        chlist = [{'id':13}, {'id': 20, 'prop' :{'tag':'abc'}}, {'id':40, 'parent':13, 'prop':{'tag':'abv', 'pro': 12}}]
+        chlist = [{'id':13}, {'id': 20, 'prop' :{'tag':'abc'}}, 
+                  {'id':40, 'parent':13, 'prop':{'tag':'abv', 'pro': 12}}]
         for ch in chlist:
             pr = ch['prop'] if 'prop' in ch else None
             parent = ch['parent'] if 'parent' in ch else None
             t.addTask(taskId=ch['id'], parentTaskId=parent, prop=pr)
+        return t
 
+
+    def test_basicAdd(self):
+
+        t = self.setup_insert()
         self.assertEqual(len(t.tasks.children), 2)
         
         for ch in t.tasks.children:
@@ -31,6 +37,66 @@ class TestTasks(unittest.TestCase):
                 self.assertEqual(ch.children, [])
                 self.assertEqual(ch.parent, t.tasks)
                 self.assertEqual(ch.prop['tag'], 'abc')
+
+    def test_addTaskTwice(self):
+        t = self.setup_insert()
+        # the task already exists so it should raise an Exception
+        self.assertRaises(Exception, t.addTask, taskId=13, parentTaskId=20)
+
+    def test_addTaskNegParent(self):
+        t = self.setup_insert()
+        self.assertRaises(Exception, t.addTask, taskId = 41, parentTaskId=-1)
+
+    def test_addTaskAsRootsChild(self):
+        # should be able to insert as root's child
+        t = self.setup_insert()
+        t.addTask(taskId=41, parentTaskId=0)
+        self.assertEqual(len(t.tasks.children), 3)
+
+    def test_updateParent(self):
+        t = self.setup_insert()
+        t.updateTask(13, parentId = 20)
+        self.assertEqual(len(t.tasks.children), 1)
+
+        # ensure the tree is intact
+        tch1 = t.tasks.children[0]
+        self.assertEqual(tch1.id, 20)
+        self.assertEqual(len(tch1.children), 1)
+        self.assertEqual(tch1.children[0].id, 13)
+
+        tch1 = tch1.children[0]
+        self.assertEqual(len(tch1.children), 1)
+        self.assertEqual(tch1.children[0].id, 40)
+        
+        #default count is 1 even if the user did not provide any properties
+        # for the task. That's because completed:0 is added during addTask
+        self.assertEqual(len(tch1.prop), 1)
+
+    def test_updateParentNeg(self):
+        t = self.setup_insert()
+        t.updateTask(13, parentId = -1)
+        ch = t.tasks.find(13)
+        self.assertEqual(ch.parent, t.tasks)
+
+
+    def test_updateProp(self):
+        t = self.setup_insert()
+        t.updateTask(20, prop={'project':'NewProj'})
+
+        self.assertEqual(len(t.tasks.children), 2)
+        ch = t.tasks.find(20)
+
+        self.assertEqual(ch.parent, t.tasks)
+        self.assertEqual(ch.children, [])
+        self.assertEqual(ch.parent, t.tasks)
+        self.assertEqual(len(ch.prop), 3)
+        self.assertEqual(ch.prop['tag'], 'abc')
+        self.assertEqual(ch.prop['project'], 'NewProj')
+
+        t.updateTask(20, prop={'tag':'abcde'})
+        self.assertEqual(ch.prop['tag'], 'abcde')
+
+
 
 if __name__ == '__main__':
         unittest.main()

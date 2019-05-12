@@ -16,8 +16,6 @@ class Tree:
 
     def insert(self, child, parentId=None):
         deb('tree.insert: count of children= ' + str(len(self.children)))
-        if child == self:
-            raise Exception('Child cannot be the father of man');
 
         res = self.find(child.id)
         if res is not None:
@@ -87,6 +85,7 @@ class Tree:
         parent = t.parent
         parent.children.remove(t)
 
+    # provides a count of all nodes in the tree
     def size(self):
         if self is None:
             return 0
