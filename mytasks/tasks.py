@@ -114,11 +114,11 @@ class Tasks:
         return task.prop['completed'] == 1
             
     def createDict(self):
-        return self.__createDictForTask(self.tasks)
+        return self.taskToDict(self.tasks)
 
     # create an object dictionary
     # similar to a serialization operation
-    def __createDictForTask(self, tasks):
+    def taskToDict(self, tasks):
         if tasks is None:
             return {} 
         deb('Tasks: createDict for taskId= ' + str(tasks.id))
@@ -135,7 +135,7 @@ class Tasks:
         
         if tasks.children is not None:
             for childObj in tasks.children:
-                cDict = self.__createDictForTask(childObj)
+                cDict = self.taskToDict(childObj)
                 resDict.update(cDict)
         deb('Tasks: createDict- taskId' + str(tasks.id) + 
             ', final dictionary is:' + str(resDict))
@@ -144,15 +144,15 @@ class Tasks:
     # create a tasks object from a dictionary
     # we expect the dictionary to be in a certain way. 
     # Need some checks in place to make sure that is obeyed
-    def buildFromDict(self, inputDict):
+    def dictToTask(self, inputDict):
         if inputDict == {}:
             raise Exception('could not read Json file, or the file was empty!')
 
         resDict = {}
         parentId = ''
         for key, value in inputDict.items():
-            deb('buildFromDict: key is = ' + key)
-            deb('buildFromDict: value is = ' + str(value))
+            deb('dictToTask: key is = ' + str(key))
+            deb('dictToTask: value is = ' + str(value))
             t = Tree(id=key)
             # if resDict has the object already use that
             if key in resDict:
@@ -161,22 +161,25 @@ class Tasks:
             # set the other properties
             t.prop = value['prop']
             if str(value['parentId']) != str(key):
-                deb('buildFromDict: ParentId = ' + str(value['parentId'])+', key:'+ str(key))
+                deb('dictToTask: ParentId = ' + 
+                    str(value['parentId']) + ', key:' + str(key))
+
                 if value['parentId'] in resDict:
-                    deb('buildFromDict: key=' + str(key) + 
+                    deb('dictToTask: key=' + str(key) + 
                         ', parentId in resDict. ParentId:'+ str(value['parentId']))
                     parent = resDict[value['parentId']]
                     t.parent = parent
                     parent.children.append(t)
                 else:
-                    deb('buildFromDict: key=' + str(key) + 
-                        ', parentId not in resDict. ParentId:'+ str(value['parentId']))
+                    deb('dictToTask: key=' + str(key) + 
+                        ', parentId not in resDict. ParentId:' + 
+                        str(value['parentId']))
                     pTree = Tree(value['parentId'])
                     t.parent = pTree
                     pTree.children.append(t)
                     resDict[value['parentId']] = pTree
             else:
-                deb('buildFromDict: found root. ParentId = ' + 
+                deb('dictToTask: found root. ParentId = ' + 
                     str(value['parentId']) +', key:'+ str(key))
                 t.parent = Tasks.ROOT_TASK_ID
                 parentId = value['parentId']
@@ -196,7 +199,7 @@ class Tasks:
         deb('readFromFile: keys are = ' + str(data.keys()))
         if data == {}:
             raise Exception('could not read Json file, or the file was empty!')
-        return self.buildFromDict(data)
+        return self.dictToTask(data)
 
     # Decode the dict object obtained from json file 
     # and convert it into Tree object
