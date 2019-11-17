@@ -145,90 +145,87 @@ class Tasks:
 
 
 
+ #update a task
+    def updateTask(self, taskId, parentId = None, prop = None, 
+                   updateSubtasks = False):
+        if taskId == Tasks.ROOT_TASK_ID:
+            raise Exception('Cannot update task with taskId: ' + taskId);
+
+        # raise an exception if not found
+        currTask = self.taskObj.find(taskId)
+        if currTask is None:
+            raise Exception('Cannot find task with task id = ' + taskId);
+        
+        if self.__isArchived(currTask):
+            raise Exception('Cannot update archived task')
+
+        # nothing to update 
+        if prop is None and parentId is None:
+            return
+
+        if parentId is not None:
+            deb('Tasks: updateTask- new parent id is: ' + str(parentId))
+            currParent = currTask.parent
+            deb('updateTask: current parent is:' + str(currParent.id))
+            
+            if parentId != currParent.id:
+                if parentId == currTask.id:
+                    newParentId = Tasks.ROOT_TASK_ID
+                
+                newParent = self.taskObj.find(parentId)
+
+                if newParent is not None:
+                    currParent.children.remove(currTask)
+
+                    # we don't append in children list if the new parent is 
+                    # the current task but that condition is checked before 
+                    # we reach here so don't need an if condition
+                    newParent.children.append(currTask)
+                    currTask.parent = newParent
+
+        if prop is not None:
+            deb('Tasks - updateTask: before updating currTask prop ' + 
+                str(currTask.prop))
+            if updateSubtasks:
+                self.__updateSubtasks(currTask, prop)
+            else:
+                currTask.prop.update(prop)
+
+            deb('Tasks - updateTask: after updating currTask prop' + 
+                str(currTask.prop))
+
+        # update the file 
+        self.write()
+ 
+       
+    # this routine updates the task and all associated subtasks 
+    # with the provided properties
+    def __updateSubtasks(self, currTask, prop):
+        currTask.prop.update(prop)
+
+        for ch in currTask.children:
+            self.__updateSubtasks(ch.id, prop)
+
+    def archiveTask(self, taskId):
+        task = self.taskObj.find(taskId)
+        if task is None:
+            raise Exception('Could not find task with task id :' + taskId) 
+ 
+        if self.__isArchived(task):
+            return
+        completionDict = {'completed':1, 
+                          'completion_time':str(datetime.datetime.now())}
+        self.__updateSubtasks(task, completionDict)
+        # update the file 
+        self.write()
 
 
-
-
-
-
-
-# update a task
-#    def updateTask(self, taskId, prop = None, parentId = None, 
-#                   updateSubtasks = False):
-#        if taskId == Tasks.ROOT_TASK_ID:
-#            raise Exception('Cannot update task with taskId: ' + taskId);
-#
-#        # raise an exception if not found
-#        currTask = self.tasks.find(taskId)
-#        if currTask is None:
-#            raise Exception('Cannot find task with task id = ' + taskId);
-#        
-#        if self.__isArchived(currTask):
-#            raise Exception('Cannot update archived task')
-#
-#        # nothing to update 
-#        if prop is None and parentId is None:
-#            return
-#
-#        if parentId is not None:
-#            deb('Tasks: updateTask- new parent id is: ' + str(parentId))
-#            currParent = currTask.parent
-#            deb('updateTask: current parent is:' + str(currParent.id))
-#            
-#            if parentId != currParent.id:
-#                if parentId == currTask.id:
-#                    newParentId = Tasks.ROOT_TASK_ID
-#                
-#                newParent = self.tasks.find(parentId)
-#
-#                if newParent is not None:
-#                    currParent.children.remove(currTask)
-#
-#                    # we don't append in children list if the new parent is 
-#                    # the current task but that condition is checked before 
-#                    # we reach here so don't need an if condition
-#                    newParent.children.append(currTask)
-#                    currTask.parent = newParent
-#
-#        if prop is not None:
-#            deb('Tasks - updateTask: before updating currTask prop ' + 
-#                str(currTask.prop))
-#            if updateSubtasks:
-#                self.__updateSubtasks(currTask, prop)
-#            else:
-#                currTask.prop.update(prop)
-#
-#            deb('Tasks - updateTask: after updating currTask prop' + 
-#                str(currTask.prop))
-# 
-#       
-#    # this routine updates the task and all associated subtasks 
-#    # with the provided properties
-#    def __updateSubtasks(self, currTask, prop):
-#        currTask.prop.update(prop)
-#
-#        for ch in currTask.children:
-#            self.__updateSubtasks(ch.id, prop)
-#
-#    def archiveTask(self, taskId):
-#        task = self.tasks.find(taskId)
-#        if task is None:
-#            raise Exception('Could not find task with task id :' + taskId) 
-# 
-#        if self.__isArchived(task):
-#            return
-#        completionDict = {'completed':1, 
-#                          'completion_time':str(datetime.datetime.now())}
-#        self.__updateSubtasks(task, completionDict)
-#
-#    # is completed
-#    def __isArchived(self, task):
-#        if 'completed' not in task.prop:
-#            return false
-#        return task.prop['completed'] == 1
-#            
-    
-
+    # is completed
+    def __isArchived(self, task):
+        if 'completed' not in task.prop:
+            return false
+        return task.prop['completed'] == 1
+            
 
 
 

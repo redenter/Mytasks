@@ -38,16 +38,16 @@ class MyTasksCLI:
         add.add_argument('allPropVal', nargs='*')
         add.set_defaults(func=self.add)
 
-#        # add 'fin' as a subparser
-#        fin = subparsers.add_parser("fin")
-#        fin.add_argument('id')
-#        fin.set_defaults(func=self.finishTask)
-#
-#        # add 'update' as a subparser
-#        upd = subparsers.add_parser("update")
-#        upd.add_argument('allPropVal', nargs='*')
-#        upd.set_defaults(func=self.update)
-#
+        # add 'fin' as a subparser
+        fin = subparsers.add_parser("fin")
+        fin.add_argument('id')
+        fin.set_defaults(func=self.finishTask)
+
+        # add 'update' as a subparser
+        upd = subparsers.add_parser("update")
+        upd.add_argument('allPropVal', nargs='*')
+        upd.set_defaults(func=self.update)
+
         # add 'list' as a subparser
         lst = subparsers.add_parser("list")
         lst.add_argument('-f','--filters', nargs='*')
@@ -114,38 +114,34 @@ class MyTasksCLI:
 
         return prop
 
-#    # right now update appends prop dicts, replacing the old ones with the new values wherever there
-#    # is a clash. 
-#    # TODO: add optional parameters to completely replace the existing parameters
-#    def update(self):
-#        prop = self.getPropDictFromCL(clInputList=args.allPropVal, currProp='id')
-#
-#        if prop == {}:
-#            raise Exception('improper arguments')
-#
-#        deb('update: got::'+str(prop))
-#        if 'id' not in prop:
-#            raise Exception('no task id provided for update. Try add or provide the task id')
-#
-#        taskId = prop['id']
-#        del prop['id']
-#
-#        parentId = None
-#        if 'parent' in prop:
-#            parentId = prop['parent']
-#            del prop['parent']
-#
-#        self.tasksObj.updateTask(taskId, parentId, prop)
-#
-#        # need to change links if parent also needs to be updated
-#        self.writeToFile(self.fileName)
-#
-#    def finishTask(self):
-#        deb('finishTask: to archive::'+ str(args.id))
-#        self.tasksObj.archiveTask(args.id)
-#        self.writeToFile(self.fileName)
-#
-#
+    # right now update appends prop dicts, replacing the old ones with the new values wherever there
+    # is a clash. 
+    # TODO: add optional parameters to completely replace the existing parameters
+    def update(self):
+        prop = self.getPropDictFromCL(clInputList=args.allPropVal, currProp='id')
+
+        if prop == {}:
+            raise Exception('improper arguments')
+
+        deb('update: got::'+str(prop))
+        if 'id' not in prop:
+            raise Exception('no task id provided for update. Try add or provide the task id')
+
+        taskId = prop['id']
+        del prop['id']
+
+        parentId = None
+        if 'parent' in prop:
+            parentId = prop['parent']
+            del prop['parent']
+
+        self.tasks.updateTask(taskId, parentId, prop)
+
+    def finishTask(self):
+        deb('finishTask: to archive::'+ str(args.id))
+        self.tasks.archiveTask(args.id)
+
+
 
 ############## Command line display ###########################
     def getDefaultConf(self):

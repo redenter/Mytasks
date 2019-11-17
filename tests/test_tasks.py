@@ -53,48 +53,48 @@ class TestTasks(unittest.TestCase):
         t.addTask(taskId=41, parentTaskId=0)
         self.assertEqual(len(t.taskObj.children), 3)
 
-#    def test_updateParent(self):
-#        t = self.setup_insert()
-#        t.updateTask(13, parentId = 20)
-#        self.assertEqual(len(t.taskObj.children), 1)
-#
-#        # ensure the tree is intact
-#        tch1 = t.taskObj.children[0]
-#        self.assertEqual(tch1.id, 20)
-#        self.assertEqual(len(tch1.children), 1)
-#        self.assertEqual(tch1.children[0].id, 13)
-#
-#        tch1 = tch1.children[0]
-#        self.assertEqual(len(tch1.children), 1)
-#        self.assertEqual(tch1.children[0].id, 40)
-#        
-#        #default count is 1 even if the user did not provide any properties
-#        # for the task. That's because completed:0 is added during addTask
-#        self.assertEqual(len(tch1.prop), 1)
-#
-#    def test_updateParentNeg(self):
-#        t = self.setup_insert()
-#        t.updateTask(13, parentId = -1)
-#        ch = t.taskObj.find(13)
-#        self.assertEqual(ch.parent, t.tasks)
-#
-#
-#    def test_updateProp(self):
-#        t = self.setup_insert()
-#        t.updateTask(20, prop={'project':'NewProj'})
-#
-#        self.assertEqual(len(t.taskObj.children), 2)
-#        ch = t.taskObj.find(20)
-#
-#        self.assertEqual(ch.parent, t.tasks)
-#        self.assertEqual(ch.children, [])
-#        self.assertEqual(ch.parent, t.tasks)
-#        self.assertEqual(len(ch.prop), 3)
-#        self.assertEqual(ch.prop['tag'], 'abc')
-#        self.assertEqual(ch.prop['project'], 'NewProj')
-#
-#        t.updateTask(20, prop={'tag':'abcde'})
-#        self.assertEqual(ch.prop['tag'], 'abcde')
+    def test_updateParent(self):
+        t = self.setup_insert()
+        t.updateTask(13, parentId = 20)
+        self.assertEqual(len(t.taskObj.children), 1)
+
+        # ensure the tree is intact
+        tch1 = t.taskObj.children[0]
+        self.assertEqual(tch1.id, 20)
+        self.assertEqual(len(tch1.children), 1)
+        self.assertEqual(tch1.children[0].id, 13)
+
+        tch1 = tch1.children[0]
+        self.assertEqual(len(tch1.children), 1)
+        self.assertEqual(tch1.children[0].id, 40)
+        
+        #default count is 1 even if the user did not provide any properties
+        # for the task. That's because completed:0 is added during addTask
+        self.assertEqual(len(tch1.prop), 1)
+
+    def test_updateParentNeg(self):
+        t = self.setup_insert()
+        t.updateTask(13, parentId = -1)
+        ch = t.taskObj.find(13)
+        self.assertEqual(ch.parent, t.taskObj)
+
+
+    def test_updateProp(self):
+        t = self.setup_insert()
+        t.updateTask(20, prop={'project':'NewProj'})
+
+        self.assertEqual(len(t.taskObj.children), 2)
+        ch = t.taskObj.find(20)
+
+        self.assertEqual(ch.parent, t.taskObj)
+        self.assertEqual(ch.children, [])
+        self.assertEqual(ch.parent, t.taskObj)
+        self.assertEqual(len(ch.prop), 3)
+        self.assertEqual(ch.prop['tag'], 'abc')
+        self.assertEqual(ch.prop['project'], 'NewProj')
+
+        t.updateTask(20, prop={'tag':'abcde'})
+        self.assertEqual(ch.prop['tag'], 'abcde')
 
     def test_taskToDict(self):
         t = self.setup_insert()
