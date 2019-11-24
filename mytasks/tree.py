@@ -8,25 +8,30 @@ def deb(stmt):
 
 class Tree:
 
-    def __init__(self, id, parent=None, prop=None):
-        self.parent = self if parent is None else parent
+    def __init__(self, id, prop=None):
         self.prop = prop if prop is not None else {}
         self.id = id
         self.children = []
+        self.parent = self
 
     def insert(self, child, parentId=None):
         deb('tree.insert: count of children= ' + str(len(self.children)))
+
+        res = self.find(child.id)
+        if res is not None:
+            raise Exception("Node with this id already exists. Id: " + str(child.id))
+
         parent = self.find(parentId) 
        # if parent is not None:
        #     print("insert: id"+str(id) +"parentId:" + str(parent.id))
-
-        # could potentially refactor here. Parent can no longer be None
+        
         if parent is None or parent==self:
             child.parent = self
             self.children.append(child)
         else:
             child.parent = parent
             parent.children.append(child)
+
         #if parent.parent is not None:
         #    deb('tree.insert:: parent is ' + parent.id + ':grandpa:' + parent.parent.id)
         #deb('tree.insert:: child is ' + child.id + ':parent:' + child.parent.id)
@@ -68,23 +73,24 @@ class Tree:
         for ch in t.children:
             t.display(ch)
 
-    # append the prop to all subtree's props
-    def addPropToSubtree(self, id, prop):
-        t = self.find(id)
-        t.prop.update(prop)
-
-        for ch in t.children:
-            ch.addPropToSubtree(ch.id, prop)
-
-
     # deletes the entire subtree associated with the id.
     # use carefully
     def delete(self, id):
         if self.id == id:
-            return
-        deb('tree.delete: trying to find:'+str(id))
+            raise Exception("Cannot delete itself")
+
+        deb('tree.delete: trying to find:' + str(id))
         t = self.find(id)
         deb('tree.delete: t.id = '+str(t.id))
         parent = t.parent
         parent.children.remove(t)
+
+    # provides a count of all nodes in the tree
+    def size(self):
+        if self is None:
+            return 0
+        res = 1
+        for nodes in self.children:
+            res += nodes.size()
+        return res
 
